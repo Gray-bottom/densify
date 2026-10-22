@@ -75,7 +75,7 @@ DENSIFY 把顺序反过来：你填目标体积，它在不超标的前提下做
 
 ## 支持格式
 
-- 输入：PDF、jpg、jpeg、png、bmp、webp、tif、tiff
+- 输入：PDF、jpg、jpeg、png、bmp、webp、tif、tiff、gif
 - 输出：jpg、png、pdf
 
 ## 它是怎么压的
