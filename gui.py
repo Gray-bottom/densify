@@ -1014,9 +1014,9 @@ class App(tk.Tk):
             return
         paths = filedialog.askopenfilenames(
             title="选择要压缩的文件",
-            filetypes=[("支持的文件", "*.pdf *.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff"),
+            filetypes=[("支持的文件", "*.pdf *.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff *.gif"),
                        ("PDF", "*.pdf"),
-                       ("图片", "*.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff"),
+                       ("图片", "*.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff *.gif"),
                        ("全部文件", "*.*")])
         if not paths:
             return
