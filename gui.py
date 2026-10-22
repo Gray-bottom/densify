@@ -36,7 +36,9 @@ CONF_PATH = os.path.join(BASE, "config.json")
 APP_NAME = "DENSIFY"            # wordmark，等宽大写
 APP_CN = "密排"
 APP_TITLE = "%s — %s" % (APP_NAME, APP_CN)
-APP_VER = "0.4"
+APP_VER = "0.4.1"
+# 对话框过滤器直接从 core 的支持列表生成，避免两处各写一遍导致漂移
+_IMG_GLOB = " ".join("*" + e for e in sorted(core.IMAGE_EXTS))
 
 
 # ---------------------------------------------------------------- 配色
@@ -1014,9 +1016,9 @@ class App(tk.Tk):
             return
         paths = filedialog.askopenfilenames(
             title="选择要压缩的文件",
-            filetypes=[("支持的文件", "*.pdf *.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff *.gif"),
+            filetypes=[("支持的文件", "*.pdf " + _IMG_GLOB),
                        ("PDF", "*.pdf"),
-                       ("图片", "*.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff *.gif"),
+                       ("图片", _IMG_GLOB),
                        ("全部文件", "*.*")])
         if not paths:
             return
