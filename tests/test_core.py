@@ -166,6 +166,33 @@ class TestCompressOne(Base):
         self.assertTrue(os.path.exists(res[0].path))
         self.assertIn("中文 文件名", res[0].path)
 
+    def test_same_dir_never_overwrites_source(self):
+        """输出目录 = 源目录、格式相同：结果必须改名，源文件保持原样"""
+        p = make_image(os.path.join(self.tmp, "photo.jpg"))
+        with open(p, "rb") as f:
+            before = f.read()
+        res = core.compress_one(p, self.tmp, 120_000, "jpg")
+
+        self.assertNotEqual(os.path.basename(res[0].path), "photo.jpg",
+                            "结果不能和源文件同名")
+        self.assertIn("_压缩", os.path.basename(res[0].path))
+        with open(p, "rb") as f:
+            self.assertEqual(f.read(), before, "源文件必须原封不动")
+
+    def test_safe_dst_helper(self):
+        src = os.path.join(self.tmp, "a.jpg")
+        # 同目录同名 → 改名
+        self.assertEqual(os.path.basename(core.safe_dst(self.tmp, "a", ".jpg", src)),
+                         "a_压缩.jpg")
+        # 不同目录 → 不改名
+        other = os.path.join(self.tmp, "o")
+        os.makedirs(other, exist_ok=True)
+        self.assertEqual(os.path.basename(core.safe_dst(other, "a", ".jpg", src)),
+                         "a.jpg")
+        # 扩展名不同 → 不改名
+        self.assertEqual(os.path.basename(core.safe_dst(self.tmp, "a", ".png", src)),
+                         "a.png")
+
 
 class TestProbe(unittest.TestCase):
     def setUp(self):
