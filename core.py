@@ -296,6 +296,25 @@ def image_to_pdf_bytes(im, target_bytes, cancel=None):
 
 # ---------------------------------------------------------------- 主流程
 
+def safe_dst(out_dir, stem, ext, src):
+    """
+    拼输出路径，并保证不会和源文件重名。
+
+    输出目录正好是源文件所在目录时，单张图片的输出会沿用原文件名
+    （photo.jpg → photo.jpg），直接写就等于毁掉原图。这种情况加「_压缩」后缀，
+    让结果落在 photo_压缩.jpg，源文件不动。
+    """
+    dst = os.path.join(out_dir, stem + ext)
+    try:
+        same = (os.path.normcase(os.path.abspath(dst))
+                == os.path.normcase(os.path.abspath(src)))
+    except Exception:
+        same = False
+    if same:
+        dst = os.path.join(out_dir, stem + "_压缩" + ext)
+    return dst
+
+
 def compress_one(src, out_dir, target_bytes, fmt,
                  merge_pages=True, log=None, cancel=None, progress=None):
     """
@@ -314,7 +333,7 @@ def compress_one(src, out_dir, target_bytes, fmt,
     # ---- PDF 进 PDF 出
     if ext == ".pdf" and fmt == "pdf":
         data, how = compress_pdf_to_pdf(src, target_bytes, cancel)
-        dst = os.path.join(out_dir, stem + "_压缩.pdf")
+        dst = safe_dst(out_dir, stem + "_压缩", ".pdf", src)
         with open(dst, "wb") as f:
             f.write(data)
         say("%s ← %s（%s）" % ("%.0fKB" % (len(data) / 1024), os.path.basename(src), how))
@@ -331,7 +350,7 @@ def compress_one(src, out_dir, target_bytes, fmt,
                                                   cancel, progress)
             if data is None:
                 raise RuntimeError("压不到目标体积，试试放宽限制")
-            dst = os.path.join(out_dir, "%s_%d页.%s" % (stem, len(pages), used))
+            dst = safe_dst(out_dir, "%s_%d页" % (stem, len(pages)), "." + used, src)
             with open(dst, "wb") as f:
                 f.write(data)
             say("拼接 %d 页 → %s（缩放%.0f%%，%s）"
@@ -345,7 +364,7 @@ def compress_one(src, out_dir, target_bytes, fmt,
             if data is None:
                 raise RuntimeError("第%d页压不到目标体积" % i)
             suffix = "" if len(pages) == 1 else "_p%d" % i
-            dst = os.path.join(out_dir, stem + suffix + "." + used)
+            dst = safe_dst(out_dir, stem + suffix, "." + used, src)
             with open(dst, "wb") as f:
                 f.write(data)
             say("%s（缩放%.0f%%，%s）" % (os.path.basename(dst), scale * 100, info))
@@ -358,7 +377,7 @@ def compress_one(src, out_dir, target_bytes, fmt,
             data, info = image_to_pdf_bytes(pages[0], target_bytes, cancel)
             if data is None:
                 raise RuntimeError("压不到目标体积")
-            dst = os.path.join(out_dir, stem + ".pdf")
+            dst = safe_dst(out_dir, stem, ".pdf", src)
             with open(dst, "wb") as f:
                 f.write(data)
             say("%s（%s）" % (os.path.basename(dst), info))
@@ -379,7 +398,7 @@ def compress_one(src, out_dir, target_bytes, fmt,
         buf = io.BytesIO()
         doc.save(buf, garbage=4, deflate=True)
         doc.close()
-        dst = os.path.join(out_dir, stem + ".pdf")
+        dst = safe_dst(out_dir, stem, ".pdf", src)
         with open(dst, "wb") as f:
             f.write(buf.getvalue())
         say(os.path.basename(dst))
