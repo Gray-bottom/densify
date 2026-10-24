@@ -36,7 +36,7 @@ CONF_PATH = os.path.join(BASE, "config.json")
 APP_NAME = "DENSIFY"            # wordmark，等宽大写
 APP_CN = "密排"
 APP_TITLE = "%s — %s" % (APP_NAME, APP_CN)
-APP_VER = "0.4.1"
+APP_VER = "0.4.2"
 # 对话框过滤器直接从 core 的支持列表生成，避免两处各写一遍导致漂移
 _IMG_GLOB = " ".join("*" + e for e in sorted(core.IMAGE_EXTS))
 
@@ -1221,25 +1221,48 @@ class App(tk.Tk):
         for key, it in self.items.items():
             jobs.append((key, it["path"], it["target"] or default_target))
 
-        # 覆盖检查：输出目录里已有同名前缀的文件就先问一声
+        # 覆盖检查分两类：顶掉原文件本身，和覆盖目录里其他同名文件
         try:
             existing = os.listdir(out_dir)
         except Exception:
             existing = []
-        clash = set()
+
+        out_exts = {"jpg": {".jpg"}, "png": {".png"}, "pdf": {".pdf"},
+                    "auto": {".jpg", ".png"}}.get(fmt, set())
+        out_abs = os.path.normcase(os.path.abspath(out_dir))
+        clash, self_hit = set(), []
         for _, path, _ in jobs:
-            stem = os.path.splitext(os.path.basename(path))[0]
+            base = os.path.basename(path)
+            stem = os.path.splitext(base)[0]
+            src_ext = os.path.splitext(base)[1].lower()
+            # 单张图片输出沿用原文件名：目录相同时，结果会直接替换源文件。
+            # PDF 的输出要么带 _压缩 / _N页 后缀，要么扩展名不同，不会同名。
+            same_dir = os.path.normcase(
+                os.path.dirname(os.path.abspath(path))) == out_abs
+            if same_dir and src_ext != ".pdf" and src_ext in out_exts:
+                self_hit.append(base)
             for f in existing:
-                if f.startswith(stem) and f != os.path.basename(path) \
+                if f.startswith(stem) and f != base \
                         and os.path.splitext(f)[1].lower() in (".jpg", ".png", ".pdf"):
                     clash.add(f)
-        if clash:
-            sample = "、".join(sorted(clash)[:3])
-            more = "" if len(clash) <= 3 else " 等 %d 个" % len(clash)
-            if not messagebox.askyesno(
-                    "会覆盖已有文件",
-                    "输出目录里已经存在：\n%s%s\n\n继续会覆盖这些文件，确定吗？" % (sample, more),
-                    parent=self):
+
+        if self_hit or clash:
+            lines = []
+            if self_hit:
+                lines.append("下面这些文件会被压缩结果直接替换，原文件无法恢复：")
+                lines.extend("    " + n for n in self_hit[:5])
+                if len(self_hit) > 5:
+                    lines.append("    …… 另 %d 个" % (len(self_hit) - 5))
+                lines.append("")
+                lines.append("想保留原文件，请把「输出目录」改成别的位置。")
+            if clash:
+                if lines:
+                    lines.append("")
+                sample = "、".join(sorted(clash)[:3])
+                more = "" if len(clash) <= 3 else " 等 %d 个" % len(clash)
+                lines.append("输出目录里的同名文件也会被覆盖：")
+                lines.append("    " + sample + more)
+            if not messagebox.askyesno("确认覆盖", "\n".join(lines), parent=self):
                 return
 
         for key, it in self.items.items():
