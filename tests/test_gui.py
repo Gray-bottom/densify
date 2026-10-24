@@ -208,17 +208,29 @@ class TestApp(unittest.TestCase):
             self.app.update()
             time.sleep(0.03)
 
-    def test_overwrite_warns_when_output_replaces_source(self):
-        """输出目录 = 源目录、扩展名相同：必须提示会替换原文件"""
-        ASK_REPLY["v"] = False          # 拒绝，源文件应保持不动
+    def test_same_dir_output_gets_suffix(self):
+        """输出目录 = 源目录：结果加 _压缩 后缀，原文件一个字节都不动"""
+        ASK_REPLY["v"] = False
         p = make_image(os.path.join(self.tmp, "photo.jpg"))
         before = os.path.getsize(p)
         self._run_with_dir(p, self.tmp, "jpg")
+
         titles = [t for t, _ in ASK_LOG]
-        self.assertIn("确认覆盖", titles, "同目录同扩展名时必须弹覆盖确认")
-        msg = dict(ASK_LOG).get("确认覆盖", "")
-        self.assertIn("photo.jpg", msg)
-        self.assertEqual(os.path.getsize(p), before, "拒绝后源文件不能变")
+        self.assertNotIn("确认覆盖", titles, "首次压缩不该弹覆盖确认")
+        self.assertEqual(os.path.getsize(p), before, "原文件不能被改动")
+        out = os.path.join(self.tmp, "photo_压缩.jpg")
+        self.assertTrue(os.path.exists(out), "结果应落在 photo_压缩.jpg")
+
+    def test_second_run_warns_when_result_exists(self):
+        """同一个文件压第二次，上次的结果会被覆盖，这时要问一声"""
+        ASK_REPLY["v"] = True
+        p = make_image(os.path.join(self.tmp, "photo.jpg"))
+        self._run_with_dir(p, self.tmp, "jpg")
+        self.assertTrue(os.path.exists(os.path.join(self.tmp, "photo_压缩.jpg")))
+
+        self._run_with_dir(p, self.tmp, "jpg")
+        titles = [t for t, _ in ASK_LOG]
+        self.assertIn("确认覆盖", titles, "覆盖上一次的结果前应确认")
 
     def test_no_warn_when_extension_differs(self):
         """jpeg 压成 jpg 是同目录但不同名，不该报「替换原文件」"""
